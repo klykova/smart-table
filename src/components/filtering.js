@@ -1,48 +1,40 @@
-import {createComparison, defaultRules} from "../lib/compare.js";
+export function initFiltering(elements) {
+    const updateIndexes = (elements, indexes) => {
+        Object.keys(indexes).forEach((elementName) => {
+            elements[elementName].append(...Object.values(indexes[elementName]).map(name => {
+                const el = document.createElement('option');
+                el.textContent = name;
+                el.value = name;
+                return el;
+            }));
+        });
+    };
 
-export function initFiltering(elements, indexes) {
-    // @todo: #4.1 — заполнить выпадающие списки опциями
-    if (elements.searchBySeller && indexes.searchBySeller) {
-        const sellerSelect = elements.searchBySeller;
-
-        const defaultOption = document.createElement('option');
-        defaultOption.value = '';
-        defaultOption.textContent = 'Все продавцы';
-        sellerSelect.appendChild(defaultOption);
-
-        // проверяем что это массив
-        if (Array.isArray(indexes.searchBySeller)) {
-            indexes.searchBySeller.forEach(seller => {
-                const option = document.createElement('option');
-                option.value = seller;
-                option.textContent = seller;
-                sellerSelect.appendChild(option);
-            });
-        } else if (typeof indexes.searchBySeller === 'object') {
-            // Если это объект, используем Object.keys()
-            Object.keys(indexes.searchBySeller).forEach(seller => {
-                const option = document.createElement('option');
-                option.value = seller;
-                option.textContent = seller;
-                sellerSelect.appendChild(option);
+    const applyFiltering = (query, state, action) => {
+        // код с обработкой очистки поля
+        if (action?.type === 'reset') {
+            Object.keys(elements).forEach(key => {
+                if (elements[key] && ['INPUT', 'SELECT'].includes(elements[key].tagName)) {
+                    elements[key].value = '';
+                }
             });
         }
-    }
 
-    return (data, state, action) => {
-        let result = [...data];
-        
-        // @todo: #4.2 — обработать очистку поля
-        if (action && action.name === 'clear') {
-            if (action.dataset.field === 'seller') {
-                elements.searchBySeller.value = '';
+        // @todo: #4.5 — отфильтровать данные, используя компаратор
+        const filter = {};
+        Object.keys(elements).forEach(key => {
+            if (elements[key]) {
+                if (['INPUT', 'SELECT'].includes(elements[key].tagName) && elements[key].value) { // ищем поля ввода в фильтре с непустыми данными
+                    filter[`filter[${elements[key].name}]`] = elements[key].value; // чтобы сформировать в query вложенный объект фильтра
+                }
             }
-        } 
+        });
 
-        // @todo: #4.3 — настроить компаратор
-        const compare = createComparison(defaultRules);
+        return Object.keys(filter).length ? Object.assign({}, query, filter) : query; // если в фильтре что-то добавилось, применим к запросу
+    };
 
-        // @todo: #4.5 — отфильтровать данные используя компаратор
-        return data.filter(row => compare(row, state));
-    }
+    return {
+        updateIndexes,
+        applyFiltering
+    };
 }
